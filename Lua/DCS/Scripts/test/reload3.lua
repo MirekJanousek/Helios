@@ -5,9 +5,7 @@ helios_mock.test = {
         log.mock_filter_facility("MOCK")
     end,
     [1] = function()
-        helios_mock.impl.setSimID("ORIGINAL*")
-        log.write('RELOAD', log.DEBUG, string.format("global LuaExportActivityNextEvent '%s'", tostring(LuaExportActivityNextEvent)))
-
+        helios_mock.loader.impl.setSimID("ORIGINAL*")
         helios_mock.setSelf("FA-18C_hornet")
         -- now wait for event loop to notice change before we load
     end,
@@ -22,8 +20,7 @@ helios_mock.test = {
         fd:close();
     end,
     [412] = function()
-        helios_mock.impl.setSimID("SECOND*")
-        log.write('RELOAD', log.DEBUG, string.format("global LuaExportActivityNextEvent '%s'", tostring(LuaExportActivityNextEvent)))
+        helios_mock.loader.impl.setSimID("SECOND*")
         local fd = io.open("Helios\\HeliosExport16.lua", "a")
         fd:write("\n-- changed by test reload3 again")
         fd:close();

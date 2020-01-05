@@ -176,8 +176,7 @@ files["Scripts/Helios/Drivers/*.lua"] = {
             helios_mock = {
                 fields = {
                     "framesUntilAutoLoad",
-                    "impl",
-                    "installReloaded",
+                    "loader",
                     "loadDriver",
                     "loadModule",
                     "driverName",

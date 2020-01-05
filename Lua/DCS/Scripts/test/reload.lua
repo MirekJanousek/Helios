@@ -6,15 +6,10 @@ helios_mock.test = {
     end,
     [2] = function()
         -- luacheck: globals tostring LuaExportActivityNextEvent helios_loader
-        helios_mock.impl.setSimID("ORIGINAL*")
+        helios_mock.loader.impl.setSimID("ORIGINAL*")
         log.write('RELOAD', log.DEBUG, string.format("global LuaExportActivityNextEvent '%s'", tostring(LuaExportActivityNextEvent)))
-        local reloaded = helios_loader.reload()
-
-        -- this step is only because mock needs the privileged interface, it would
-        -- not happen at run time
-        helios_mock.installReloaded(reloaded)
+        helios_mock.loader.reload()
         assert(helios_mock.driverName() == "", "state not reset")
-
         log.write('RELOAD', log.DEBUG, string.format("global LuaExportActivityNextEvent '%s'", tostring(LuaExportActivityNextEvent)))
     end,
     [3] = function()

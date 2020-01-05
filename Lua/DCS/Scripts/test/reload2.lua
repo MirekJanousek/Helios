@@ -9,20 +9,10 @@ helios_mock.test = {
         assert(helios_mock.driverName() == "FA-18C_hornet", "profile not active")
     end,
     [12] = function()
-        local reloaded = helios_loader.reload() -- luacheck: no global
-
-        -- this step is only because mock needs the privileged interface, it would
-        -- not happen at run time
-        helios_mock.installReloaded(reloaded)
-        assert(helios_mock.driverName() == "", "state not reset")
+        helios_mock.loader.reload()
     end,
     [13] = function()
-        local reloaded = helios_loader.reload() -- luacheck: no global
-
-        -- this step is only because mock needs the privileged interface, it would
-        -- not happen at run time
-        helios_mock.installReloaded(reloaded)
-        assert(helios_mock.driverName() == "", "state not reset")
+        helios_mock.loader.reload()
     end,
     [14] = function()
         helios_mock.setSelf("FA-18C_hornet")
