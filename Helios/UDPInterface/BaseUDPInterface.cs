@@ -572,7 +572,7 @@ namespace GadrocsWorkshop.Helios.UDPInterface
                 while ((socket.Available > 0) && (context.Length < context.Capacity))
                 {
                     ReceiveContext.Message message = context.BeginWrite();
-                    SocketError errorCode = default;
+                    SocketError errorCode = SocketError.SocketError;
                     try
                     {
                         message.bytesReceived = socket.Receive(message.data, 0, message.data.Length, SocketFlags.None, out errorCode);
