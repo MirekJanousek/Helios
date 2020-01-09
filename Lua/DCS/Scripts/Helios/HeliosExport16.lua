@@ -101,39 +101,8 @@ function helios_impl.LuaExportStop()
 end
 
 function helios_impl.LuaExportActivityNextEvent(timeNow)
-    local previousClock = helios_private.clock
     helios_private.clock = timeNow
-    if previousClock == 0 then
-        -- we just learned the time for the first time
-        helios_private.initTimers()
-    end
     local nextEvent = timeNow + helios_impl.exportInterval
-
-    -- process timers
-    for timerName, timer in pairs(helios_private.state.timers) do
-        if timer ~= nil then
-            -- log.write(
-            --     "HELIOS.EXPORT",
-            --     log.DEBUG,
-            --     string.format("active timer %s at %f, clock is %f", timerName, timer, clock)
-            -- )
-            if helios_private.clock >= timer then
-                -- timer expired
-                if timerName == "reload" then
-                    if helios_private.checkReload() then
-                        -- all our functions and state were just reset, so don't do anything
-                        -- and get called again right away
-                        return nextEvent + 1
-                    end
-                end
-            else
-                if timer < nextEvent then
-                    -- need to wake up for this
-                    nextEvent = timer
-                end
-            end
-        end
-    end
 
     -- check if vehicle type has changed
     local selfName = helios.selfName()
@@ -276,8 +245,8 @@ end
 
 -- called either from LuaExportStart hook or from hot reload
 function helios_impl.init()
-    -- load socket library, if not already done
-    helios_private.socketLibrary = helios_private.socketLibrary or require("socket")
+    -- load socket library
+    helios_private.socketLibrary = require("socket")
 
     -- Simulation id
     helios_private.simID = string.format("%08x*", os.time())
@@ -297,13 +266,6 @@ function helios_impl.init()
     helios_private.clientSocket:setsockname("*", 0)
     helios_private.clientSocket:setoption("broadcast", true)
     helios_private.clientSocket:settimeout(.001) -- blocking, but for a very short time
-
-    -- if we are reloaded, we have to start using the new copies of these functions,
-    -- because they are bound to the new private variables
-    if helios_loader ~= nil then
-        helios_loader.reload = helios_private.reload
-        helios_loader.scriptChanged = helios_private.scriptChanged
-    end
 end
 
 function helios_impl.unload()
@@ -472,7 +434,7 @@ end
 -- ========================= PRIVATE CODE ========================================
 
 -- luasocket
-helios_private.socketLibrary = nil -- lazy init, but not reset on hot reload
+helios_private.socketLibrary = nil -- lazy init
 
 function helios_private.clearState()
     helios_private.state = {}
@@ -487,16 +449,8 @@ function helios_private.clearState()
     -- Frame counter for non important data
     helios_private.state.tickCount = 0
 
-    -- times at which we need to take a specific action
-    helios_private.state.timers = {}
-
     -- ticks of fast announcement remaining
     helios_private.state.fastAnnounceTicks = helios_impl.fastAnnounceDuration / helios_impl.exportInterval
-
-    -- restart timers if we know what time it is
-    if helios_private.clock > 0 then
-        helios_private.initTimers()
-    end
 end
 
 function helios_private.processArguments(device, arguments)
@@ -618,22 +572,6 @@ function helios_private.processExports()
             helios_private.processArguments(mainPanetargetDevice, helios_private.driver.arguments)
             helios_private.driver.processLowImportance(mainPanetargetDevice)
             helios_private.state.tickCount = 0
-        end
-    end
-end
-
--- called when we first learn the clock time or when we reset the state
-function helios_private.initTimers()
-    log.write("HELIOS.EXPORT", log.DEBUG, string.format("initializing timers at (clock %f)", helios_private.clock))
-    if helios_loader ~= nil then
-        if helios_loader.timer ~= nil then
-            -- restore timer
-            helios_private.state.timers.reload = helios_loader.timer
-        else
-            -- start new one
-            helios_private.state.timers.reload =  helios_private.clock + helios_impl.hotReloadInterval
-            -- persist
-            helios_loader.timer = helios_private.state.timers.reload
         end
     end
 end
@@ -818,7 +756,7 @@ function helios_private.chainHook(functionName)
         end
         -- chain to next if it isn't our safety stub left over from reload
         local nextHandler = helios_private.previousHooks[functionName]
-        if nextHandler ~= nil and nextHandler ~= helios_loader[functionName] then
+        if nextHandler ~= nil then
             nextHandler()
         end
     end
@@ -848,7 +786,7 @@ function LuaExportActivityNextEvent(timeNow)
     -- chain to next and keep closest event time that requires wake up
     -- chain only if it isn't our safety stub left over from reload
     local nextHandler = helios_private.previousHooks.LuaExportActivityNextEvent
-    if nextHandler ~= nil and nextHandler ~= helios_loader.LuaExportActivityNextEvent then
+    if nextHandler ~= nil then
         local timeOther = nextHandler(timeNow)
         if timeOther < timeNext then
             timeNext = timeOther
@@ -860,42 +798,3 @@ end
 -- when this script is being tested, these functions are accessible to our tester
 -- they are also used to transfer to a new version of this script on hot reload
 return helios_impl
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again
--- changed by test reload3
--- changed by test reload3 again

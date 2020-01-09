@@ -197,7 +197,93 @@ files["Scripts/Helios/Drivers/*.lua"] = {
         }
     }
  }
+ files["Scripts/exmock/*.lua"] = {
+    std = {
+        globals = {
+            helios_mock = {
+                fields = {
+                    "test",
+                    "loader",
+                    "loadDriver",
+                    "loadModule",
+                    "driverName",
+                    "moduleName",
+                    "receiveLoadDriver",
+                    "receiveLoadModule",
+                    "fps",
+                    "sleepRatio",
+                    "run",
+                    "setSelf",
+                    "selfName"
+                }
+            },
+            exmock = {
+                fields = {
+                    "selfName",
+                    "fps",
+                    "sleepRatio",
+                    "run"
+                }
+            },
+            "package"
+        },
+        read_globals = {
+            -- modules we provide
+            "log",
+            "lfs",
 
+            -- LUA std
+            "math",
+            "table",
+            "string",
+            "tonumber",
+            "assert",
+            "type",
+            "require",
+            "pairs",
+            "ipairs",
+            "arg",
+            "loadfile"
+        }
+    }
+ }
+ files["Scripts/RunExport.lua"] = {
+    std = {
+        globals = {
+            -- LUA std
+            "package"
+        },
+        read_globals = {
+            exmock = {
+                fields = {
+                    "selfName",
+                    "fps",
+                    "sleepRatio",
+                    "run"
+                }
+            },
+
+            -- modules we provide
+            "log",
+            "lfs",
+
+            -- LUA std
+            "package",
+            "math",
+            "table",
+            "string",
+            "tonumber",
+            "assert",
+            "type",
+            "require",
+            "pairs",
+            "ipairs",
+            "arg",
+            "loadfile",
+            "pcall"
+        }
+    }
+ }
  -- Helios modules from Capt Zeen
  files["Scripts/Helios/Mods/*.lua"] = {
     std = {
