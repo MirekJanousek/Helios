@@ -535,26 +535,26 @@ namespace GadrocsWorkshop.Helios.ControlCenter
 
         }
 
-        private void Profile_ProfileStatusReceived(object sender, ProfileStatus e)
+        private void Profile_ProfileStatusReceived(object sender, DriverStatus e)
         {
-            _lastProfileStatus = e.RunningProfile;
+            _lastProfileStatus = e.ExportDriver;
             UpdateStatusMessage();
             if (ProfileAutoStartCheckBox.IsChecked == false)
             {
                 return;
             }
-            ConfigManager.LogManager.LogDebug($"received profile status indicating that simulator is running exports for '{e.RunningProfile}'");
+            ConfigManager.LogManager.LogDebug($"received profile status indicating that simulator is running exports for '{e.ExportDriver}'");
 
             // already running or selected?
-            if (SelectedProfileName == e.RunningProfile)
+            if (SelectedProfileName == e.ExportDriver)
             {
                 return;
             }
 
-            List<string> selectedPaths = _profiles.FindAll(path => Path.GetFileNameWithoutExtension(path) == e.RunningProfile);
+            List<string> selectedPaths = _profiles.FindAll(path => Path.GetFileNameWithoutExtension(path) == e.ExportDriver);
             if (selectedPaths.Count > 1)
             {
-                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.RunningProfile}' but we have multiple profiles by that name; cannot auto load");
+                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.ExportDriver}' but we have multiple profiles by that name; cannot auto load");
                 foreach(string path in selectedPaths)
                 {
                     ConfigManager.LogManager.LogWarning($"name collision: {path}");
@@ -563,7 +563,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
             }
             if (selectedPaths.Count == 0)
             {
-                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.RunningProfile}' but we have no matching profile; cannot auto load");
+                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.ExportDriver}' but we have no matching profile; cannot auto load");
                 return;
             }
             string profilePath = selectedPaths[0];

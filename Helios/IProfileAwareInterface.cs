@@ -13,9 +13,9 @@ namespace GadrocsWorkshop.Helios
             public string Tag { get; set; }
         }
 
-        public class ProfileStatus : EventArgs
+        public class DriverStatus : EventArgs
         {
-            public string RunningProfile { get; set; }
+            public string ExportDriver { get; set; }
         }
 
         public class ClientChange: EventArgs
@@ -32,12 +32,12 @@ namespace GadrocsWorkshop.Helios
         {
             /// <summary>
             /// Fired to indicate the interface is providing information related
-            /// to the specified profile name.  This name is not necessarily the 
+            /// to the specified export driver name.  This name is not necessarily the 
             /// same as the HeliosProfile.Name
             ///
-            /// This event can be fired with or without a previous RequestProfile call.
+            /// This event can be fired with or without a previous RequestDriver call.
             /// </summary>
-            event EventHandler<ProfileAwareInterface.ProfileStatus> ProfileStatusReceived;
+            event EventHandler<ProfileAwareInterface.DriverStatus> DriverStatusReceived;
 
             /// <summary>
             /// Fired to indicate the interface would like a profile with a tag matching
@@ -58,11 +58,11 @@ namespace GadrocsWorkshop.Helios
             IEnumerable<string> Tags { get; }
 
             /// <summary>
-            /// Request that the interface provide the information for the specified profile name,
-            /// and send a ProfileStatusReceived event when this is accomplished.
+            /// Request that the interface provide the information for the specified driver name,
+            /// and send a DriverStatus event when this is accomplished.
             /// </summary>
             /// <param name="name"></param>
-            void RequestProfile(string name);
+            void RequestDriver(string name);
         }
     }
 }

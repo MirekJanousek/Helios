@@ -84,7 +84,7 @@ namespace GadrocsWorkshop.Helios
 
         // this event indicates that some interface received an indication that the specified
         // profile name is loaded on the other side of the interface
-        public event EventHandler<ProfileStatus> ProfileStatusReceived;
+        public event EventHandler<DriverStatus> ProfileStatusReceived;
 
         // this event indicates that some interface may have connected to a different endpoint
         // than before
@@ -331,7 +331,7 @@ namespace GadrocsWorkshop.Helios
             {
                 if (heliosInterface is IProfileAwareInterface profileAware)
                 {
-                    profileAware.RequestProfile(shortName);
+                    profileAware.RequestDriver(shortName);
                 }
             }
         }
@@ -407,7 +407,7 @@ namespace GadrocsWorkshop.Helios
                     if (heliosInterface is IProfileAwareInterface profileAware)
                     {
                         profileAware.ProfileHintReceived += Interface_ProfileHintReceived;
-                        profileAware.ProfileStatusReceived += Interface_ProfileStatusReceived;
+                        profileAware.DriverStatusReceived += Interface_ProfileStatusReceived;
                         profileAware.ClientChanged += Interface_ClientChanged;
                         _tags.UnionWith(profileAware.Tags);
                     }
@@ -425,7 +425,7 @@ namespace GadrocsWorkshop.Helios
                     if (heliosInterface is IProfileAwareInterface profileAware)
                     {
                         profileAware.ProfileHintReceived -= Interface_ProfileHintReceived;
-                        profileAware.ProfileStatusReceived -= Interface_ProfileStatusReceived;
+                        profileAware.DriverStatusReceived -= Interface_ProfileStatusReceived;
                         profileAware.ClientChanged -= Interface_ClientChanged;
                     }
                 }
@@ -441,7 +441,7 @@ namespace GadrocsWorkshop.Helios
             }
         }
 
-        private void Interface_ProfileStatusReceived(object sender, ProfileStatus e)
+        private void Interface_ProfileStatusReceived(object sender, DriverStatus e)
         {
             ProfileStatusReceived?.Invoke(this, e);
         }

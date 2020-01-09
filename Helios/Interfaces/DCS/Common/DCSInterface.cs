@@ -65,7 +65,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         // this event indicates that the interface received an indication that the specified
         // profile name is loaded on the other side of the interface
         [field: NonSerialized]
-        public event EventHandler<ProfileStatus> ProfileStatusReceived;
+        public event EventHandler<DriverStatus> DriverStatusReceived;
         #endregion
 
         private string DCSPath
@@ -136,7 +136,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         private void ActiveProfile_ValueReceived(object sender, NetworkTriggerValue.Value e)
         {
             _protocol?.OnProfileRequestAck(e.Text);
-            ProfileStatusReceived?.Invoke(this, new ProfileStatus() { RunningProfile = e.Text });
+            DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = e.Text });
         }
 
         private void ActiveVehicle_ValueReceived(object sender, NetworkTriggerValue.Value e)
@@ -144,7 +144,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             ProfileHintReceived?.Invoke(this, new ProfileHint() { Tag = e.Text });
         }
 
-        public void RequestProfile(string name)
+        public void RequestDriver(string name)
         {
             // the interface is supposed to have called OnProfileStarted before this is called,
             // so don't check for null; we want this to crash if this breaks in the future
