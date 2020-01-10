@@ -12,8 +12,8 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
     public class DCSExportProtocol
     {
         private HeliosProfile _profile;
-        private RetriedRequest _requestExportProfile;
-        private string _requestedExportProfile;
+        private RetriedRequest _requestExport;
+        private string _requestedExports;
 
         public class RetriedRequest
         {
@@ -33,7 +33,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
                 _udp = udp;
 
                 // REVISIT: configurable?
-                _retryLimit = 3;
+                _retryLimit = 10;
                 _timer.Interval = 1000;
 
                 _timer.Elapsed += Timer_Elapsed;
@@ -49,6 +49,10 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
                 {
                     ConfigManager.LogManager.LogDebug($"sending {_description}");
                     _udp.SendData(_request);
+                } 
+                else
+                {
+                    ConfigManager.LogManager.LogDebug($"cannot send {_description} because UDP transport is not ready or does not know remote endpoint");
                 }
                 _timer.Start();
             }
@@ -82,11 +86,18 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
                     _timer.Stop();
                     return;
                 }
-                if ((_request != null) && _udp.CanSend)
+                if (_request != null)
                 {
-                    ConfigManager.LogManager.LogDebug($"retrying{_description}");
-                    _udp.SendData(_request);
-                    _retries++;
+                    if (_udp.CanSend)
+                    {
+                        ConfigManager.LogManager.LogDebug($"retrying {_description}");
+                        _udp.SendData(_request);
+                        _retries++;
+                    }
+                    else
+                    {
+                        ConfigManager.LogManager.LogDebug($"cannot retry {_description} because UDP transport is not ready or does not know remote endpoint");
+                    }
                 }
             }
         }
@@ -94,22 +105,28 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         public DCSExportProtocol(UDPInterface.BaseUDPInterface udp, HeliosProfile profile)
         {
             _profile = profile;
-            _requestExportProfile = new RetriedRequest(udp, profile);
+            _requestExport = new RetriedRequest(udp, profile);
         }
 
-        public void SendProfileRequest(string profileShortName)
+        public void SendDriverRequest(string driverShortName)
         {
-            _requestedExportProfile = profileShortName;
-            _requestExportProfile.Send($"P{profileShortName}", $"request to install export profile {profileShortName}");
+            _requestedExports = driverShortName;
+            _requestExport.Send($"D{driverShortName}", $"request to install export driver {driverShortName}");
         }
-        
+
+        public void SendModuleRequest()
+        {
+            _requestedExports = "Module";
+            _requestExport.Send($"M", $"request to install export module for current aircraft");
+        }
+
         public void OnProfileRequestAck(string profileShortName)
         {
-            if (_requestedExportProfile == profileShortName)
+            if (_requestedExports == profileShortName)
             {
                 // this acknowledges our attempt to load this profile, if the name matches what we are trying to load
                 // cancel retries of "P" command
-                _requestExportProfile.Stop();
+                _requestExport.Stop();
             }
         }
 
@@ -118,23 +135,17 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         /// </summary>
         public void Stop()
         {
-            _requestExportProfile.Stop();
+            _requestExport.Stop();
         }
 
         public void Reset()
         {
-            _requestExportProfile.Restart();
+            _requestExport.Restart();
         }
 
-        // callback on socket worker thread
-        public void BaseUDPInterface_ClientChanged(object sender, ProfileAwareInterface.ClientChange e)
+        internal void OnClientChanged()
         {
-            _profile?.Dispatcher.Invoke((Action)OnClientChanged, System.Windows.Threading.DispatcherPriority.Normal);
-        }
-
-        private void OnClientChanged()
-        {
-            _requestExportProfile.Restart();
+            _requestExport.Restart();
         }
     }
 }

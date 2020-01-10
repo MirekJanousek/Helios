@@ -20,6 +20,8 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
     using Microsoft.Win32;
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
+    using System.Xml;
 
     public class DCSInterface : BaseUDPInterface, IProfileAwareInterface
     {
@@ -29,6 +31,12 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         protected int _phantomTop;
         protected long _nextCheck = 0;
         protected string _exportDeviceName;
+        protected bool _usesExportModule;
+        private static readonly bool DEFAULT_MODULE_USE = false;
+
+        // current state of the Export script, as far as we know
+        protected string _currentDriver = "";
+        protected bool _currentDriverIsModule = false;
 
         // protocol to talk to DCS Export script (control messages)
         protected DCSExportProtocol _protocol;
@@ -37,6 +45,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             : base(name)
         {
             _exportDeviceName = exportDeviceName;
+            _usesExportModule = DEFAULT_MODULE_USE;
 
             // XXX temp until we get rid of alternate names
             AlternateName = exportDeviceName;
@@ -50,9 +59,12 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             NetworkTriggerValue activeVehicle = new NetworkTriggerValue(this, "ACTIVE_VEHICLE", "ActiveVehicle", "Vehicle currently inhabited in DCS.", "Short name of vehicle");
             AddFunction(activeVehicle);
             activeVehicle.ValueReceived += ActiveVehicle_ValueReceived;
-            NetworkTriggerValue activeProfile = new NetworkTriggerValue(this, "ACTIVE_PROFILE", "ActiveExportProfile", "Export profile running on DCS.", "Short name of profile");
-            AddFunction(activeProfile);
-            activeProfile.ValueReceived += ActiveProfile_ValueReceived;
+            NetworkTriggerValue activeDriver = new NetworkTriggerValue(this, "ACTIVE_DRIVER", "ActiveDriver", "Export driver running on DCS.", "Short name of driver");
+            AddFunction(activeDriver);
+            activeDriver.ValueReceived += ActiveDriver_ValueReceived;
+            NetworkTriggerValue activeModule = new NetworkTriggerValue(this, "ACTIVE_MODULE", "ActiveModule", "Export module running on DCS.", "Short name of module");
+            AddFunction(activeModule);
+            activeModule.ValueReceived += ActiveModule_ValueReceived;
             AddFunction(new NetworkTrigger(this, "ALIVE", "Heartbeat", "Received periodically if there is no other data received"));
         }
 
@@ -66,6 +78,25 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         // profile name is loaded on the other side of the interface
         [field: NonSerialized]
         public event EventHandler<DriverStatus> DriverStatusReceived;
+        #endregion
+
+        #region Properties
+        public bool UsesExportModule
+        {
+            get
+            {
+                return _usesExportModule;
+            }
+            set
+            {
+                if (!_usesExportModule.Equals(value))
+                {
+                    bool oldValue = _usesExportModule;
+                    _usesExportModule = value;
+                    OnPropertyChanged("UsesExportModule", oldValue, value, false);
+                }
+            }
+        }
         #endregion
 
         private string DCSPath
@@ -133,8 +164,18 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             }
         }
 
-        private void ActiveProfile_ValueReceived(object sender, NetworkTriggerValue.Value e)
+        private void ActiveDriver_ValueReceived(object sender, NetworkTriggerValue.Value e)
         {
+            _currentDriver = e.Text;
+            _currentDriverIsModule = false;
+            _protocol?.OnProfileRequestAck(e.Text);
+            DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = e.Text });
+        }
+
+        private void ActiveModule_ValueReceived(object sender, NetworkTriggerValue.Value e)
+        {
+            _currentDriver = e.Text;
+            _currentDriverIsModule = true;
             _protocol?.OnProfileRequestAck(e.Text);
             DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = e.Text });
         }
@@ -148,7 +189,28 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         {
             // the interface is supposed to have called OnProfileStarted before this is called,
             // so don't check for null; we want this to crash if this breaks in the future
-            _protocol.SendProfileRequest(name);
+            if (_usesExportModule)
+            {
+                if (_currentDriverIsModule)
+                {
+                    // we let the Export script make sure it is the right one for the vehicle
+                    // but we let our UI know
+                    DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = _currentDriver });
+                    return;
+                }
+                _protocol.SendModuleRequest();
+            }
+            else
+            {
+                if ((!_currentDriverIsModule) && (_exportDeviceName == _currentDriver))
+                {
+                    // already in correct state
+                    // but we let our UI know
+                    DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = _currentDriver });
+                    return;
+                }
+                _protocol.SendDriverRequest(_exportDeviceName);
+            }
         }
 
         public override void Reset()
@@ -159,19 +221,46 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
 
         protected override void OnProfileStarted()
         {
-            _protocol = new DCSExportProtocol(this, _profile);
-
-            // hook transport via event (transport is our base class) to know when we
-            // have to reset our conversation with the client, because the client has 
-            // potentially restarted
-            ClientChanged += _protocol.BaseUDPInterface_ClientChanged;
+            _protocol = new DCSExportProtocol(this, Profile);
         }
 
         protected override void OnProfileStopped()
         {
-            ClientChanged -= _protocol.BaseUDPInterface_ClientChanged;
             _protocol.Stop();
             _protocol = null;
+        }
+
+        protected override void OnClientChanged(string fromValue, string toValue)
+        {
+            base.OnClientChanged(fromValue, toValue);
+            
+            // protocol needs to know
+            _protocol.OnClientChanged();
+
+            // our information is now out of date
+            _currentDriver = "";
+            _currentDriverIsModule = false;
+        }
+
+        public override void ReadXml(XmlReader reader)
+        {
+            base.ReadXml(reader);
+            TypeConverter bc = TypeDescriptor.GetConverter(typeof(bool));
+            if (reader.Name == "UsesExportModule")
+            {
+                _usesExportModule = (bool)bc.ConvertFromInvariantString(reader.ReadElementString("UsesExportModule"));
+            }
+        }
+
+        public override void WriteXml(XmlWriter writer)
+        {
+            base.WriteXml(writer);
+            TypeConverter bc = TypeDescriptor.GetConverter(typeof(bool));
+            if (_usesExportModule != DEFAULT_MODULE_USE)
+            {
+                // write new Xml only if configured, because it may break previous versions
+                writer.WriteElementString("UsesExportModule", bc.ConvertToInvariantString(_usesExportModule));
+            }
         }
     }
 }

@@ -83,8 +83,8 @@ namespace GadrocsWorkshop.Helios
         public event EventHandler<ProfileHint> ProfileHintReceived;
 
         // this event indicates that some interface received an indication that the specified
-        // profile name is loaded on the other side of the interface
-        public event EventHandler<DriverStatus> ProfileStatusReceived;
+        // export driver name is loaded on the other side of the interface
+        public event EventHandler<DriverStatus> DriverStatusReceived;
 
         // this event indicates that some interface may have connected to a different endpoint
         // than before
@@ -324,7 +324,6 @@ namespace GadrocsWorkshop.Helios
 
         public void RequestProfileSupport()
         {
-
             // any interfaces that care should now provide information for the newly loaded profile
             string shortName = System.IO.Path.GetFileNameWithoutExtension(Path);
             foreach (HeliosInterface heliosInterface in _interfaces)
@@ -407,7 +406,7 @@ namespace GadrocsWorkshop.Helios
                     if (heliosInterface is IProfileAwareInterface profileAware)
                     {
                         profileAware.ProfileHintReceived += Interface_ProfileHintReceived;
-                        profileAware.DriverStatusReceived += Interface_ProfileStatusReceived;
+                        profileAware.DriverStatusReceived += Interface_DriverStatusReceived;
                         profileAware.ClientChanged += Interface_ClientChanged;
                         _tags.UnionWith(profileAware.Tags);
                     }
@@ -425,7 +424,7 @@ namespace GadrocsWorkshop.Helios
                     if (heliosInterface is IProfileAwareInterface profileAware)
                     {
                         profileAware.ProfileHintReceived -= Interface_ProfileHintReceived;
-                        profileAware.DriverStatusReceived -= Interface_ProfileStatusReceived;
+                        profileAware.DriverStatusReceived -= Interface_DriverStatusReceived;
                         profileAware.ClientChanged -= Interface_ClientChanged;
                     }
                 }
@@ -441,9 +440,9 @@ namespace GadrocsWorkshop.Helios
             }
         }
 
-        private void Interface_ProfileStatusReceived(object sender, DriverStatus e)
+        private void Interface_DriverStatusReceived(object sender, DriverStatus e)
         {
-            ProfileStatusReceived?.Invoke(this, e);
+            DriverStatusReceived?.Invoke(this, e);
         }
 
         private void Interface_ProfileHintReceived(object sender, ProfileHint e)

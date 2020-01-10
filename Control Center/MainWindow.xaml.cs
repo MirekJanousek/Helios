@@ -54,7 +54,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
 
         // most recently received simulator info
         private string _lastProfileHint = "";
-        private string _lastProfileStatus = "";
+        private string _lastDriverStatus = "";
 
         public MainWindow()
         {
@@ -198,9 +198,9 @@ namespace GadrocsWorkshop.Helios.ControlCenter
             } else {
                 message += "\n";
             }
-            if (_lastProfileStatus.Length > 0)
+            if (_lastDriverStatus.Length > 0)
             {
-                message += $"\nSimulator is running {_lastProfileStatus}";
+                message += $"\nSimulator is running {_lastDriverStatus}";
             }
             SetValue(MessageProperty, message);
         }        
@@ -460,7 +460,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
                 ActiveProfile.ControlCenterHidden += Profile_HideControlCenter;
                 ActiveProfile.ProfileStopped += Profile_ProfileStopped;
                 ActiveProfile.ProfileHintReceived += Profile_ProfileHintReceived;
-                ActiveProfile.ProfileStatusReceived += Profile_ProfileStatusReceived;
+                ActiveProfile.DriverStatusReceived += Profile_DriverStatusReceived;
                 ActiveProfile.ClientChanged += Profile_ClientChanged;
 
                 ActiveProfile.Dispatcher = Dispatcher;
@@ -535,9 +535,9 @@ namespace GadrocsWorkshop.Helios.ControlCenter
 
         }
 
-        private void Profile_ProfileStatusReceived(object sender, DriverStatus e)
+        private void Profile_DriverStatusReceived(object sender, DriverStatus e)
         {
-            _lastProfileStatus = e.ExportDriver;
+            _lastDriverStatus = e.ExportDriver;
             UpdateStatusMessage();
             if (ProfileAutoStartCheckBox.IsChecked == false)
             {
@@ -605,7 +605,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
                 // this is a change during our profile's lifetime, so we need to discard information we have
                 _lastProfileHint = "";
             }
-            _lastProfileStatus = "";
+            _lastDriverStatus = "";
         }
 
         private void StopProfile()
@@ -650,7 +650,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
                 profile.ControlCenterHidden -= Profile_HideControlCenter;
                 profile.ProfileStopped -= Profile_ProfileStopped;
                 profile.ProfileHintReceived -= Profile_ProfileHintReceived;
-                profile.ProfileStatusReceived -= Profile_ProfileStatusReceived;
+                profile.DriverStatusReceived -= Profile_DriverStatusReceived;
                 profile.ClientChanged -= Profile_ClientChanged;
             }
 
