@@ -6,6 +6,17 @@ package.cpath = package.cpath..';./exmock/?.dll;'
 -- bunch of globals set to appear like DCS Lua environment
 local exmock = loadfile("exmock/mock_dcs.lua")()
 exmock.selfName = arg[1];
+local FC = {
+    ["A-10A"] = true,
+    ["F-15C"] = true,
+    ["MiG-29"] = true,
+    ["Su-25"] = true,
+    ["Su-27"] = true,
+    ["Su-33"] = true
+}
+if FC[exmock.selfName] then
+    exmock.flamingCliffs = true
+end
 log.write('MOCK', log.INFO, string.format("aircraft set to '%s'", exmock.selfName));
 
 -- change to test directory, if any

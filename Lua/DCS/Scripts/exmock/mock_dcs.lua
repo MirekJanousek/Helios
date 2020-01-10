@@ -31,6 +31,9 @@ function list_indication(indicator_id) -- luacheck: no unused
 end
 
 function GetDevice(name) -- luacheck: no unused
+    if exmock.flamingCliffs then
+        return nil
+    end
     return mock_device
 end
 
@@ -38,6 +41,10 @@ function LoGetSelfData()
     local info = {}
     info.Name = exmock.selfName
     info.Heading = exmock.counters.makeValue(-1, 1, 0.02)
+    info.LatLongAlt = { 
+        Lat = exmock.counters.makeValue(50, 100, 0.5),
+        Long = exmock.counters.makeValue(50, 100, 0.5)
+    }
     return info
 end
 
@@ -75,6 +82,7 @@ end
 
 function LoGetControlPanel_HSI()
     return {
+        ADF_raw = exmock.counters.makeValue(-10, 10, 0.1),
         ADR_raw = exmock.counters.makeValue(-10, 10, 0.1),
         RMI_raw = exmock.counters.makeValue(-10, 10, 0.1)
     }
@@ -89,7 +97,14 @@ function LoGetIndicatedAirSpeed()
 end
 
 function LoGetRoute()
-    return nil
+    return {
+        goto_point = {
+            world_point = {
+                x = exmock.counters.makeValue(50, 100, 0.5),
+                z = exmock.counters.makeValue(50, 100, 0.5)
+            }
+        }
+    }
 end
 
 function LoGetAngleOfAttack()
@@ -109,7 +124,12 @@ function LoGetSideDeviation()
 end
 
 function LoGetNavigationInfo()
-    return nil
+    return {
+        SystemMode = {
+            master = "master",
+            submode = "submode"
+        }
+    }
 end
 
 function LoGeoCoordinatesToLoCoordinates(x1, z1)

@@ -220,6 +220,7 @@ files["Scripts/Helios/Drivers/*.lua"] = {
             exmock = {
                 fields = {
                     "selfName",
+                    "flamingCliffs",
                     "fps",
                     "sleepRatio",
                     "run"
