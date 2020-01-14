@@ -30,7 +30,9 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         protected int _phantomLeft;
         protected int _phantomTop;
         protected long _nextCheck = 0;
+
         protected string _exportDeviceName;
+
         protected bool _usesExportModule;
         private static readonly bool DEFAULT_MODULE_USE = false;
 
@@ -81,6 +83,9 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         #endregion
 
         #region Properties
+
+        // WARNING: there is currently no UI for this feature, because that UI is in a different development branch.
+        // this value will be set manually in the XML for testing in this branch of the code
         public bool UsesExportModule
         {
             get
@@ -97,6 +102,15 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
                 }
             }
         }
+
+        // WARNING: there is currently no UI for this feature, because that UI is in a different development branch.
+        // this value will be set manually in the XML for testing in this branch of the code
+        /// <summary>
+        /// If not null, the this interface instance is configured to impersonate the specified vehicle name.  This means
+        /// that Helios should select it for the given vehicle, instead of the one that the interface natively supports.
+        /// </summary>
+        public string ImpersonatedVehicleName { get; internal set; }
+
         #endregion
 
         private string DCSPath
@@ -121,11 +135,12 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             }
         }
 
-        // we only support selection based on aircraft type
-        public IEnumerable<string> Tags {
+        // we only support selection based on which vehicle this interface supports
+        public IEnumerable<string> Tags
+        {
             get
             {
-                return new string[] { _exportDeviceName };
+                return new string[] { ImpersonatedVehicleName ?? _exportDeviceName };
             }
         }
 
@@ -246,9 +261,21 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         {
             base.ReadXml(reader);
             TypeConverter bc = TypeDescriptor.GetConverter(typeof(bool));
-            if (reader.Name == "UsesExportModule")
+            while (reader.NodeType == XmlNodeType.Element)
             {
-                _usesExportModule = (bool)bc.ConvertFromInvariantString(reader.ReadElementString("UsesExportModule"));
+                switch (reader.Name)
+                {
+                    case "UsesExportModule":
+                        _usesExportModule = (bool)bc.ConvertFromInvariantString(reader.ReadElementString("UsesExportModule"));
+                        break;
+                    case "ImpersonatedVehicleName":
+                        ImpersonatedVehicleName = reader.ReadElementString("ImpersonatedVehicleName");
+                        break;
+                    default:
+                        string discard = reader.ReadElementString(reader.Name);
+                        ConfigManager.LogManager.LogWarning($"Ignored unsupported DCS Interface setting '{reader.Name}' with value '{discard}'");
+                        break;
+                }
             }
         }
 
@@ -260,6 +287,10 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
             {
                 // write new Xml only if configured, because it may break previous versions
                 writer.WriteElementString("UsesExportModule", bc.ConvertToInvariantString(_usesExportModule));
+            }
+            if (ImpersonatedVehicleName != null)
+            {
+                writer.WriteElementString("ImpersonatedVehicleName", ImpersonatedVehicleName);
             }
         }
     }
