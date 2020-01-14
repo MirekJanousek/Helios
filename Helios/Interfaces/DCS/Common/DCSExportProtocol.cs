@@ -116,16 +116,26 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
 
         public void SendModuleRequest()
         {
-            _requestedExports = "Module";
+            _requestedExports = null;
             _requestExport.Send($"M", $"request to install export module for current aircraft");
         }
 
-        public void OnProfileRequestAck(string profileShortName)
+        public void OnDriverStatus(string driverShortName)
         {
-            if (_requestedExports == profileShortName)
+            if (_requestedExports == driverShortName)
             {
-                // this acknowledges our attempt to load this profile, if the name matches what we are trying to load
-                // cancel retries of "P" command
+                // this acknowledges our attempt to load this driver, if the name matches what we are trying to load
+                // cancel retries of "D" command
+                _requestExport.Stop();
+            }
+        }
+
+        public void OnModuleStatus()
+        {
+            if (_requestedExports == null)
+            {
+                // this acknowledges our attempt to load a module
+                // cancel retries of "M" command
                 _requestExport.Stop();
             }
         }

@@ -183,7 +183,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         {
             _currentDriver = e.Text;
             _currentDriverIsModule = false;
-            _protocol?.OnProfileRequestAck(e.Text);
+            _protocol?.OnDriverStatus(e.Text);
             DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = e.Text });
         }
 
@@ -191,7 +191,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
         {
             _currentDriver = e.Text;
             _currentDriverIsModule = true;
-            _protocol?.OnProfileRequestAck(e.Text);
+            _protocol?.OnModuleStatus();
             DriverStatusReceived?.Invoke(this, new DriverStatus() { ExportDriver = e.Text });
         }
 
