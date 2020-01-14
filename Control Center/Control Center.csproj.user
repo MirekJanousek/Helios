@@ -14,9 +14,9 @@
     <StartArguments>--loglevel=debug</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>--LogLevel=Debug</StartArguments>
+    <StartArguments>--LogLevel=Debug --documents=HeliosTesting</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <StartArguments>--LogLevel=Debug</StartArguments>
+    <StartArguments>--LogLevel=Debug --documents=HeliosTesting</StartArguments>
   </PropertyGroup>
 </Project>

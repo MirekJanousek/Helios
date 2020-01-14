@@ -245,10 +245,14 @@ end
 
 -- called either from LuaExportStart hook or from hot reload
 function helios_impl.init()
+    log.write("HELIOS.EXPORT", log.DEBUG, "loading")
+
     -- load socket library
+    log.write("HELIOS.EXPORT", log.DEBUG, "loading luasocket")
     helios_private.socketLibrary = require("socket")
 
     -- Simulation id
+    log.write("HELIOS.EXPORT", log.DEBUG, "setting simulation ID")
     helios_private.simID = string.format("%08x*", os.time())
 
     -- most recently detected selfName
@@ -259,6 +263,7 @@ function helios_impl.init()
 
     -- init with empty driver that exports nothing by default
     -- NOTE: also clears state
+    log.write("HELIOS.EXPORT", log.DEBUG, "installing empty driver")
     helios_impl.installDriver(helios_private.createDriver(), "")
 
     -- start service
@@ -266,6 +271,8 @@ function helios_impl.init()
     helios_private.clientSocket:setsockname("*", 0)
     helios_private.clientSocket:setoption("broadcast", true)
     helios_private.clientSocket:settimeout(.001) -- blocking, but for a very short time
+
+    log.write("HELIOS.EXPORT", log.DEBUG, "loaded")
 end
 
 function helios_impl.unload()
@@ -275,6 +282,8 @@ function helios_impl.unload()
 
     -- free file descriptor and release port
     helios_private.clientSocket:close()
+
+    log.write("HELIOS.EXPORT", log.DEBUG, "unloaded")
 end
 
 -- handle incoming message from Helios

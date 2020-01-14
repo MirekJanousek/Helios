@@ -293,7 +293,17 @@ namespace GadrocsWorkshop.Helios.ControlCenter
                     ActiveProfile = null;
                 }
 
+                // try to load the profile, setting SelectedProfileName in the process
                 LoadProfile(profileToLoad);
+
+                if (ActiveProfile != null)
+                {
+                    // we need to fix up the selection index or Next/Prev buttons will not work correctly
+                    // because LoadProfile sets SelectedProfileName but assumes the prev/next has already been set
+                    // by user interaction.  however, we selected this profile without user interaction
+                    LoadProfileList(profileToLoad);
+                }
+
                 StartProfile();
             }
         }
@@ -539,36 +549,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
         {
             _lastDriverStatus = e.ExportDriver;
             UpdateStatusMessage();
-            if (ProfileAutoStartCheckBox.IsChecked == false)
-            {
-                return;
-            }
             ConfigManager.LogManager.LogDebug($"received profile status indicating that simulator is running exports for '{e.ExportDriver}'");
-
-            // already running or selected?
-            if (SelectedProfileName == e.ExportDriver)
-            {
-                return;
-            }
-
-            List<string> selectedPaths = _profiles.FindAll(path => Path.GetFileNameWithoutExtension(path) == e.ExportDriver);
-            if (selectedPaths.Count > 1)
-            {
-                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.ExportDriver}' but we have multiple profiles by that name; cannot auto load");
-                foreach(string path in selectedPaths)
-                {
-                    ConfigManager.LogManager.LogWarning($"name collision: {path}");
-                }
-                return;
-            }
-            if (selectedPaths.Count == 0)
-            {
-                ConfigManager.LogManager.LogWarning($"simulator is running exports for '{e.ExportDriver}' but we have no matching profile; cannot auto load");
-                return;
-            }
-            string profilePath = selectedPaths[0];
-            ConfigManager.LogManager.LogDebug($"trying to start matching profile '{profilePath}'");
-            ControlCenterCommands.RunProfile.Execute(profilePath, Application.Current.MainWindow);
         }
 
         private void Profile_ProfileHintReceived(object sender, ProfileHint e)
@@ -702,7 +683,11 @@ namespace GadrocsWorkshop.Helios.ControlCenter
             if (ActiveProfile == null || (ActiveProfile != null && ActiveProfile.LoadTime < Directory.GetLastWriteTime(ActiveProfile.Path)))
             {
                 StatusMessage = StatusValue.Loading;
+
+                // pump main thread to update UI
                 Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)delegate { });
+
+                // now do the load that might take a while
                 ActiveProfile = ConfigManager.ProfileManager.LoadProfile(path, Dispatcher);
             }
 
@@ -729,7 +714,7 @@ namespace GadrocsWorkshop.Helios.ControlCenter
             }
             else
             {
-                StatusMessage = StatusValue.Running;
+                StatusMessage = StatusValue.LoadError;
             }
         }
 
@@ -743,14 +728,19 @@ namespace GadrocsWorkshop.Helios.ControlCenter
             LoadProfileList(currentProfilePath);
         }
 
-        private void LoadProfileList(string currentProfileName)
+        /// <summary>
+        /// reload the list of profiles on disk and set the current selected index if
+        /// the given path matches references a file that still exists
+        /// </summary>
+        /// <param name="currentProfilePath"></param>
+        private void LoadProfileList(string currentProfilePath)
         {
             _profileIndex = -1;
             _profiles.Clear();
 
             foreach (string file in Directory.GetFiles(ConfigManager.ProfilePath, "*.hpf"))
             {
-                if (currentProfileName != null && file.Equals(currentProfileName))
+                if (currentProfilePath != null && file.Equals(currentProfilePath))
                 {
                     _profileIndex = _profiles.Count;
                     SelectedProfileName = System.IO.Path.GetFileNameWithoutExtension(file);

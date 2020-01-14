@@ -247,7 +247,9 @@ namespace GadrocsWorkshop.Helios.UDPInterface
                 {
                     if (_receiveContexts.Count > 0)
                     {
-                        return _receiveContexts.Dequeue();
+                        ReceiveContext context = _receiveContexts.Dequeue();
+                        context.socket = _socket;
+                        return context;
                     }
                     else
                     {
@@ -285,6 +287,8 @@ namespace GadrocsWorkshop.Helios.UDPInterface
         /// </summary>
         private class ReceiveContext
         {
+            public Socket socket;
+
             public class Message
             {
                 // preallocated space
@@ -315,9 +319,13 @@ namespace GadrocsWorkshop.Helios.UDPInterface
             // number of buffers filled
             private int _messagesFilled = 0;
 
+            /// <summary>
+            /// called before we are recycled to pool
+            /// </summary>
             public void Clear()
             {
                 _messagesFilled = 0;
+                socket = null;
             }
 
             public int Length
@@ -507,34 +515,31 @@ namespace GadrocsWorkshop.Helios.UDPInterface
         /// <param name="context"></param>
         private void WaitForData(ReceiveContext context)
         {
-            // large critical section to ensure started state does not change
-            lock (_shared.Lock)
+            if ((!_shared.Started) || (context.socket == null))
             {
-                if (!_shared.Started)
-                {
-                    return;
-                }
+                // we are shut down
+                return;
+            }
 
-                ConfigManager.LogManager.LogDebug("UDP interface waiting for socket data. (Interface=\"" + Name + "\")");
-                do
+            // too verbose: ConfigManager.LogManager.LogDebug("UDP interface waiting for socket data. (Interface=\"" + Name + "\")");
+            do
+            {
+                try
                 {
-                    try
+                    ReceiveContext.Message message = context.BeginWrite();
+                    _ = context.socket.BeginReceiveFrom(message.data, 0, message.data.Length, SocketFlags.None, ref message.fromEndPoint, _socketDataCallback, context);
+                    break;
+                }
+                catch (SocketException se)
+                {
+                    if (!HandleSocketException(se, out context.socket))
                     {
-                        ReceiveContext.Message message = context.BeginWrite();
-                        _ = _shared.ServerSocket.BeginReceiveFrom(message.data, 0, message.data.Length, SocketFlags.None, ref message.fromEndPoint, _socketDataCallback, context);
+                        ConfigManager.LogManager.LogError("UDP interface unable to recover from socket reset, no longer receiving data. (Interface=\"" + Name + "\")");
                         break;
                     }
-                    catch (SocketException se)
-                    {
-                        if (!HandleSocketException(se))
-                        {
-                            ConfigManager.LogManager.LogError("UDP interface unable to recover from socket reset, no longer receiving data. (Interface=\"" + Name + "\")");
-                            break;
-                        }
-                        // else retry forever
-                    }
-                } while (true);
-            }
+                    // else retry forever
+                }
+            } while (true);
         }
 
         /// <summary>
@@ -543,76 +548,67 @@ namespace GadrocsWorkshop.Helios.UDPInterface
         /// <param name="asyncResult"></param>
         private void OnDataReceived(IAsyncResult asyncResult)
         {
-            ReceiveContext owned = null;
-            lock (_shared.Lock)
+            if (!_shared.Started)
             {
-                if (!_shared.Started)
+                // ignore, we shut down since requesting receive
+                return;
+            }
+            ReceiveContext context = asyncResult.AsyncState as ReceiveContext;
+            try
+            {
+                ReceiveContext.Message message = context.ContinueWrite(0);
+                message.bytesReceived = context.socket.EndReceiveFrom(asyncResult, ref message.fromEndPoint);
+                context.EndWrite();
+            }
+            catch (SocketException se)
+            {
+                // NOTE: EndReceiveFrom isn't retriable, because the receive won't we valid after we reset socket
+                if (!HandleSocketException(se, out context.socket))
                 {
-                    // ignore, we shut down since requesting receive
+                    // no new receive attempt
                     return;
                 }
-                Socket socket = _shared.ServerSocket;
-                ReceiveContext context = asyncResult.AsyncState as ReceiveContext;
+
+                // recovered with probably a new socket
+            }
+            // drain the socket, as much as allowed, to share the context switch to main
+            while ((context.socket.Available > 0) && (context.Length < context.Capacity))
+            {
+                ReceiveContext.Message message = context.BeginWrite();
+                message.bytesReceived = 0;
                 try
                 {
-                    ReceiveContext.Message message = context.ContinueWrite(0);
-                    message.bytesReceived = _shared.ServerSocket.EndReceiveFrom(asyncResult, ref message.fromEndPoint);
-                    context.EndWrite();
+                    message.bytesReceived = context.socket.ReceiveFrom(message.data, 0, message.data.Length, SocketFlags.None, ref message.fromEndPoint);
+                    if (message.bytesReceived > 0)
+                    {
+                        // if we did not receive anything or throw, we use this slot again
+                        context.EndWrite();
+                    }
                 }
                 catch (SocketException se)
                 {
-                    // NOTE: EndReceiveFrom isn't retriable, because the receive won't we valid after we reset socket
-                    if (!HandleSocketException(se))
+                    if (HandleSocketException(se, out context.socket))
                     {
-                        // no new receive attempt
-                        return;
-                    }
-
-                    // recovered with probably a new socket
-                    socket = _shared.ServerSocket;
-                }
-                // drain the socket, as much as allowed, to share the context switch to main
-                while ((socket.Available > 0) && (context.Length < context.Capacity))
-                {
-                    ReceiveContext.Message message = context.BeginWrite();
-                    message.bytesReceived = 0;
-                    try
-                    {
-                        message.bytesReceived = socket.ReceiveFrom(message.data, 0, message.data.Length, SocketFlags.None, ref message.fromEndPoint);
-                        if (message.bytesReceived > 0)
-                        {
-                            // if we did not receive anything or throw, we use this slot again
-                            context.EndWrite();
-                        }
-                    }
-                    catch (SocketException se)
-                    {
-                        if (HandleSocketException(se))
-                        {
-                            // recovered with probably a new socket
-                            socket = _shared.ServerSocket;
-                        } else {
-                            // dead, stop trying to drain
-                            break;
-                        }
+                        // recovered with probably a new socket
+                    } else {
+                        // dead, stop trying to drain
+                        break;
                     }
                 }
-                owned = context;
             }
 
-            // NOTE: owned must not be null here, so crash if it is.  
             // it could be empty if all we did this iteration is throw and reset the socket 
-            if (owned.Length > 0)
+            if (context.Length > 0)
             {
                 // offload parsing from main thread to socket thread pool, without lock held
-                ParseReceived(owned);
+                ParseReceived(context);
 
                 // pass ownership to main thread, process synchronously
-                Dispatcher.Invoke(new Action(() => this.DispatchReceived(owned)), System.Windows.Threading.DispatcherPriority.Send);
+                Dispatcher.Invoke(new Action(() => this.DispatchReceived(context)), System.Windows.Threading.DispatcherPriority.Send);
             }
 
             // start next receive
-            WaitForData(_shared.FetchReceiveContext() ?? new ReceiveContext());
+            WaitForData(_shared.FetchReceiveContext() ?? new ReceiveContext() { socket = _shared.ServerSocket });
         }
 
         private static void ParseReceived(ReceiveContext owned)
@@ -709,17 +705,28 @@ namespace GadrocsWorkshop.Helios.UDPInterface
         }
 
         // WARNING: called on both Main and Socket threads, depending on where the failure occurred
-        private bool HandleSocketException(SocketException se)
+        private bool HandleSocketException(SocketException se, out Socket newSocket)
         {
             if ((SocketError)se.ErrorCode == SocketError.ConnectionReset)
             {
-                CloseSocket();
-                OpenSocket();
+                try
+                {
+                    CloseSocket();
+                    newSocket = OpenSocket();
+                }
+                catch (SocketException secondException)
+                {
+                    ConfigManager.LogManager.LogError("UDP interface threw exception (Interface=\"" + Name + "\")", se);
+                    ConfigManager.LogManager.LogError("UDP interface then threw exception reopening socket; cannot continue. (Interface=\"" + Name + "\")", secondException);
+                    newSocket = null;
+                    return false;
+                }
                 return true;
             }
             else
             {
                 ConfigManager.LogManager.LogError("UDP interface threw unhandled exception handling socket reset. (Interface=\"" + Name + "\")", se);
+                newSocket = null;
                 return false;
             }
         }
@@ -733,15 +740,15 @@ namespace GadrocsWorkshop.Helios.UDPInterface
                     ConfigManager.LogManager.LogDebug("UDP interface sending data. (Interface=\"" + Name + "\", Data=\"" + data + "\")");
                     SendContext context = new SendContext();
                     context.dataBuffer = _iso_8859_1.GetBytes(data + "\n");
-                    lock (_shared.Lock)
-                    {
-                        _shared.ServerSocket.SendTo(context.dataBuffer, 0, context.dataBuffer.Length, SocketFlags.None, _main.Client);
-                    }
+                    Socket socket = _shared.ServerSocket;
+                    socket?.BeginSendTo(context.dataBuffer, 0, context.dataBuffer.Length, SocketFlags.None, _main.Client, OnDataSent, context);
                 }
             }
             catch (SocketException se)
             {
-                HandleSocketException(se);
+                // just ignore
+                ConfigManager.LogManager.LogDebug($"UDP interface threw handled socket exception '{se.Message}' while sending data. (Interface=\"" + Name + "\", Data=\"" + data + "\")");
+                HandleSocketException(se, out Socket unused);
             }
             catch (Exception e)
             {
@@ -770,20 +777,18 @@ namespace GadrocsWorkshop.Helios.UDPInterface
 
 
         // WARNING: called on both Main and Socket threads, depending on where a socket exception occurred
-        private void OpenSocket()
+        private Socket OpenSocket()
         {
             EndPoint bindEndPoint = new IPEndPoint(IPAddress.Any, _shared.Port);
             Socket socket = new Socket(AddressFamily.InterNetwork,
                                       SocketType.Dgram,
                                       ProtocolType.Udp);
             socket.ExclusiveAddressUse = false;
-            // https://github.com/BlueFinBima/Helios/issues/140
             socket.Bind(bindEndPoint);
+            _shared.ServerSocket = socket;
 
-            lock (_shared.Lock)
-            {
-                _shared.ServerSocket = socket;
-            }
+            // we need to return this to the caller, so they don't rely on _shared.ServerSocket, in case it immediately gets changed by another thread
+            return socket;
         }
 
         private void CloseSocket()
@@ -808,7 +813,7 @@ namespace GadrocsWorkshop.Helios.UDPInterface
             {
                 _main.Client = new IPEndPoint(IPAddress.Any, 0);
                 _main.ClientID = "";
-                OpenSocket();
+                Socket serverSocket = OpenSocket();
 
                 // 10 seconds for Delayed Startup
                 Timer timer = new Timer(10000);
@@ -819,7 +824,7 @@ namespace GadrocsWorkshop.Helios.UDPInterface
 
                 ConfigManager.LogManager.LogInfo("Startup timer started.");
                 
-                WaitForData(new ReceiveContext());
+                WaitForData(new ReceiveContext() { socket = serverSocket });
                 
                 // hook for descendants
                 OnProfileStarted();
