@@ -59,6 +59,7 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
 
             public void Restart()
             {
+                ConfigManager.LogManager.LogDebug($"restarting {_description} with up to {_retryLimit} retries");
                 _retries = 0;
                 _timer.Start();
             }
@@ -155,6 +156,8 @@ namespace GadrocsWorkshop.Helios.Interfaces.DCS.Common
 
         internal void OnClientChanged()
         {
+            // this handles the cases where DCS starts or restarts and we don't have an active
+            // retry any more
             _requestExport.Restart();
         }
     }
