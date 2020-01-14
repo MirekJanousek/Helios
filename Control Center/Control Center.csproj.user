@@ -17,6 +17,6 @@
     <StartArguments>--LogLevel=Debug --documents=HeliosTesting</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <StartArguments>--LogLevel=Debug --documents=HeliosTesting</StartArguments>
+    <StartArguments>--LogLevel=Warning --documents=HeliosTesting</StartArguments>
   </PropertyGroup>
 </Project>
