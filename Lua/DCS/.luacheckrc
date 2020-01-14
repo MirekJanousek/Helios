@@ -19,23 +19,6 @@ std = {
             }
         },
 
-        -- hot reload functionality
-        -- only present if hot reloading is enabled
-        helios_loader = {
-            fields = {
-                "fullPath",
-                "modified",
-                "reload",
-                "scriptChanged",
-                "timer",
-                "LuaExportStart",
-                "LuaExportStop",
-                "LuaExportActivityNextEvent",
-                "LuaExportBeforeNextFrame",
-                "LuaExportAfterNextFrame"
-            }
-        },
-
         -- LUA mutable globals
         "package",
 
@@ -45,17 +28,6 @@ std = {
         "LuaExportAfterNextFrame",
         "LuaExportStop",
         "LuaExportActivityNextEvent",
-
-        -- current implementations of DCS export hooks
-        helios_dcs = {
-            fields = {
-                "LuaExportStart",
-                "LuaExportStop",
-                "LuaExportActivityNextEvent",
-                "LuaExportBeforeNextFrame",
-                "LuaExportAfterNextFrame"
-            }
-        },
 
         -- compatibility with modules
         Helios_Udp = {
@@ -149,139 +121,6 @@ files["Scripts/Helios/Drivers/*.lua"] = {
 
             -- DCS
             -- nothing for now, let"s try to wrap those things that we need in safe alternatives, like parseIndication
-        }
-    }
- }
- files["Scripts/test"] = {
-    std = {
-        globals = {
-            helios_mock = {
-                fields = {
-                    "test"
-                }
-            }
-        },
-        read_globals = {
-            -- modules
-            "log",
-
-            -- helios export API
-            helios = {
-                fields = {
-                    "selfName"
-                }
-            },
-
-            -- helios mock API
-            helios_mock = {
-                fields = {
-                    "framesUntilAutoLoad",
-                    "loader",
-                    "loadDriver",
-                    "loadModule",
-                    "driverName",
-                    "moduleName",
-                    "receiveLoadDriver",
-                    "receiveLoadModule",
-                    "setSelf",
-                    "sleepRatio"
-                }
-            },
-
-            -- LUA std
-            "math",
-            "table",
-            "string",
-            "tonumber",
-            "assert"
-        }
-    }
- }
- files["Scripts/exmock/*.lua"] = {
-    std = {
-        globals = {
-            helios_mock = {
-                fields = {
-                    "test",
-                    "loader",
-                    "loadDriver",
-                    "loadModule",
-                    "driverName",
-                    "moduleName",
-                    "receiveLoadDriver",
-                    "receiveLoadModule",
-                    "fps",
-                    "sleepRatio",
-                    "run",
-                    "setSelf",
-                    "selfName"
-                }
-            },
-            exmock = {
-                fields = {
-                    "selfName",
-                    "flamingCliffs",
-                    "fps",
-                    "sleepRatio",
-                    "run"
-                }
-            },
-            "package"
-        },
-        read_globals = {
-            -- modules we provide
-            "log",
-            "lfs",
-
-            -- LUA std
-            "math",
-            "table",
-            "string",
-            "tonumber",
-            "assert",
-            "type",
-            "require",
-            "pairs",
-            "ipairs",
-            "arg",
-            "loadfile"
-        }
-    }
- }
- files["Scripts/RunExport.lua"] = {
-    std = {
-        globals = {
-            -- LUA std
-            "package"
-        },
-        read_globals = {
-            exmock = {
-                fields = {
-                    "selfName",
-                    "fps",
-                    "sleepRatio",
-                    "run"
-                }
-            },
-
-            -- modules we provide
-            "log",
-            "lfs",
-
-            -- LUA std
-            "package",
-            "math",
-            "table",
-            "string",
-            "tonumber",
-            "assert",
-            "type",
-            "require",
-            "pairs",
-            "ipairs",
-            "arg",
-            "loadfile",
-            "pcall"
         }
     }
  }
@@ -387,7 +226,7 @@ files["Scripts/Helios/Drivers/*.lua"] = {
         "612", -- trailing whitespace
         "614" -- trailing whitespace
     }
- }
+}
 
  -- specific plane modules all have different globals and we can"t for loop here
 files["Scripts/Helios/Mods/*.lua"].std.globals.Helios_A10C = files["Scripts/Helios/Mods/*.lua"].std.globals.PLANE
