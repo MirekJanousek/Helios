@@ -645,7 +645,10 @@ namespace GadrocsWorkshop.Helios.UDPInterface
         {
             if (owned.Length > 1)
             {
-                ConfigManager.LogManager.LogInfo($"received {owned.Length} UDP messages in batch");
+                if (ConfigManager.LogManager.LogLevel == LogLevel.Debug)
+                {
+                    ConfigManager.LogManager.LogDebug($"received {owned.Length} UDP messages in batch");
+                }
             }
 
             // REVISIT: could skip ahead if this batch contains a client change
